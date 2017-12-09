@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"testing"
-	"time"
 
 	"github.com/siklol/blockchain/hasher"
 	"github.com/stretchr/testify/assert"
@@ -10,12 +9,32 @@ import (
 
 func TestSuccessfulGenesisBlock(t *testing.T) {
 	// given
-	gt := time.Date(2017, 12, 9, 12, 0, 0, 0, &time.Location{})
+	data := []byte("genesis block!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256Hasher, gt, []byte("genesis block!"))
+	g := GenesisBlock(hasher.Sha256, data)
 
 	// then
 	assert.NotEmpty(t, g)
-	assert.Equal(t, g.Hash, "LE2Z/RqRua8vNB7yS2tYRuoNes5dCuiYmywtKQpVoBo=")
+	assert.NotEmpty(t, g.Hash)
+	assert.True(t, g.IsGenesisBlock())
+}
+
+func TestSuccessfulMineBlock(t *testing.T) {
+	// given
+	data := []byte("genesis block!")
+	secondBlockData := []byte("blockchain rocks!")
+
+	// when
+	g := GenesisBlock(hasher.Sha256, data)
+	c := Mine(g, secondBlockData)
+
+	// then
+	assert.NotEmpty(t, g)
+	assert.NotEmpty(t, c)
+	assert.NotEmpty(t, g.Hash)
+	assert.Equal(t, g.Hash, c.PrevHash)
+	assert.NotEmpty(t, c)
+	assert.True(t, g.IsGenesisBlock())
+	assert.False(t, c.IsGenesisBlock())
 }

@@ -8,15 +8,15 @@ import (
 )
 
 var (
-	Sha256Hasher = Hasher{}
+	Sha256 = hasher{}
 )
 
-type Hasher struct {
+type hasher struct {
 }
 
-func (ha Hasher) GenerateHash(index int, prevHash string, timestamp time.Time, data []byte) string {
+func (ha hasher) GenerateHash(index int64, prevHash string, timestamp time.Time, data []byte) string {
 	h := crypto.SHA256.New()
-	h.Write([]byte(strconv.Itoa(index) + prevHash + string(timestamp.Unix()))) // TODO check for errors
+	h.Write([]byte(strconv.Itoa(int(index)) + prevHash + string(timestamp.Unix()))) // TODO check for errors
 	h.Write(data)
 	hashByte := h.Sum(nil)
 
