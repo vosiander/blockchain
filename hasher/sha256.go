@@ -1,10 +1,12 @@
 package hasher
 
 import (
-	"crypto"
+	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
-	"strconv"
 	"time"
+
+	"github.com/siklol/blockchain/conversion"
 )
 
 var (
@@ -14,11 +16,17 @@ var (
 type hasher struct {
 }
 
-func (ha hasher) GenerateHash(index int64, prevHash string, timestamp time.Time, data []byte) string {
-	h := crypto.SHA256.New()
-	h.Write([]byte(strconv.Itoa(int(index)) + prevHash + string(timestamp.Unix()))) // TODO check for errors
-	h.Write(data)
-	hashByte := h.Sum(nil)
+func (ha hasher) GenerateHash(index int64, prevHash string, t time.Time, data []byte) string {
+	b := bytes.Join(
+		[][]byte{
+			conversion.IntToHex(index),
+			[]byte(prevHash),
+			conversion.IntToHex(t.Unix()),
+		},
+		data,
+	)
 
-	return base64.StdEncoding.EncodeToString(hashByte)
+	hashByte := sha256.Sum256(b)
+
+	return base64.StdEncoding.EncodeToString(hashByte[:])
 }

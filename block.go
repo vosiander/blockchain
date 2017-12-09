@@ -1,10 +1,15 @@
 package blockchain
 
 import (
+	"errors"
 	"time"
 )
 
 const GenesisBlockIndex = 0
+
+var (
+	ErrInvalidBlockHash = errors.New("invalid block hash")
+)
 
 type Block struct {
 	hasher    Hasher
@@ -37,10 +42,15 @@ func (b *Block) IsGenesisBlock() bool {
 	return b.Index == GenesisBlockIndex && b.PrevHash == ""
 }
 
-func Mine(tip *Block, data []byte) *Block {
+func Mine(tip *Block, data []byte) (*Block, error) {
 	index := tip.Index + 1
 	t := time.Now()
-	return &Block{
+
+	if !tip.IsValidHash(tip.Hash) {
+		return nil, ErrInvalidBlockHash
+	}
+
+	b := &Block{
 		hasher:    tip.hasher,
 		Index:     index,
 		Hash:      tip.hasher.GenerateHash(index, tip.Hash, t, data),
@@ -48,4 +58,11 @@ func Mine(tip *Block, data []byte) *Block {
 		Timestamp: t,
 		Data:      data,
 	}
+
+	return b, nil
+}
+
+func (b *Block) IsValidHash(hash string) bool {
+	challenge := b.hasher.GenerateHash(b.Index, b.PrevHash, b.Timestamp, b.Data)
+	return hash == challenge
 }
