@@ -8,11 +8,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/siklol/blockchain"
 	"github.com/siklol/blockchain/handler"
+	"github.com/siklol/blockchain/network"
 )
 
 func main() {
 	// router
 	router := gin.Default()
+
+	pool := network.NewPool()
 
 	// we assume that the genesis block is created equally on all our handlers. Else we would have different blockchains
 	genesisMsg := []byte("")
@@ -22,6 +25,7 @@ func main() {
 	// handlers
 	handler.NewDefaultHandler().Register(router)
 	handler.NewBlockHandler(chain).Register(router)
+	handler.NewPeersHandler(pool).Register(router)
 
 	if err := router.Run(); err != nil {
 		log.Fatalf("fatal error occured: %s", err.Error())
