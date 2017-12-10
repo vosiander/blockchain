@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/siklol/blockchain/hasher"
+	"github.com/siklol/blockchain/proofofwork"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +15,7 @@ func TestSuccessfulGenesisBlock(t *testing.T) {
 	data := []byte("genesis block!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, data)
+	g := GenesisBlock(hasher.Sha256, proofofwork.HashCash, data)
 
 	// then
 	assert.NotEmpty(t, g)
@@ -28,7 +29,7 @@ func TestSuccessfulMineBlock(t *testing.T) {
 	secondBlockData := []byte("blockchain rocks!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, data)
+	g := GenesisBlock(hasher.Sha256, proofofwork.HashCash, data)
 	c, err := Mine(g, secondBlockData)
 
 	// then
@@ -52,11 +53,24 @@ func TestInvalidHash(t *testing.T) {
 	secondBlockData := []byte("blockchain rocks!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, data)
+	g := GenesisBlock(hasher.Sha256, proofofwork.HashCash, data)
 	g.Timestamp = g.Timestamp.Add(-1 * 20 * time.Hour)
 	_, err := Mine(g, secondBlockData)
 
 	// then
 	assert.Error(t, err)
 	assert.Equal(t, ErrInvalidBlockHash, err)
+}
+
+func TestProofOfWork(t *testing.T) {
+	// given
+	data := []byte("genesis block!")
+	secondBlockData := []byte("blockchain rocks!")
+
+	// when
+	g := GenesisBlock(hasher.Sha256, proofofwork.HashCash, data)
+	c, _ := Mine(g, secondBlockData)
+
+	// then
+	assert.True(t, c.VerifyProofOfWork(c.Nonce))
 }

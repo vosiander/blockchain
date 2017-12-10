@@ -10,6 +10,7 @@ import (
 
 type hasherTestStruct struct {
 	index     int64
+	nonce     int64
 	prevHash  string
 	timestamp time.Time
 	data      []byte
@@ -19,31 +20,31 @@ func TestHashGeneration(t *testing.T) {
 	// given
 	tx := time.Now()
 	data := []struct {
-		first     hasherTestStruct
-		challenge hasherTestStruct
+		a hasherTestStruct
+		b hasherTestStruct
 	}{
 		{
-			first:     hasherTestStruct{0, "", tx, []byte("This is a test")},
-			challenge: hasherTestStruct{1, "", tx, []byte("This is a test")},
+			a: hasherTestStruct{0, 1, "", tx, []byte("This is a test")},
+			b: hasherTestStruct{1, 1, "", tx, []byte("This is a test")},
 		},
 		{
-			first:     hasherTestStruct{0, "", tx, []byte("This is a test")},
-			challenge: hasherTestStruct{0, "abc", tx, []byte("This is a test")},
+			a: hasherTestStruct{0, 1, "", tx, []byte("This is a test")},
+			b: hasherTestStruct{0, 1, "abc", tx, []byte("This is a test")},
 		},
 		{
-			first:     hasherTestStruct{0, "", tx, []byte("This is a test")},
-			challenge: hasherTestStruct{0, "", tx.Add(-1 * 5 * time.Minute), []byte("This is a test")},
+			a: hasherTestStruct{0, 1, "", tx, []byte("This is a test")},
+			b: hasherTestStruct{0, 1, "", tx.Add(-1 * 5 * time.Minute), []byte("This is a test")},
 		},
 		{
-			first:     hasherTestStruct{0, "", tx, []byte("This is a test")},
-			challenge: hasherTestStruct{0, "", tx, []byte("That is really one")},
+			a: hasherTestStruct{0, 1, "", tx, []byte("This is a test")},
+			b: hasherTestStruct{0, 1, "", tx, []byte("That is really one")},
 		},
 	}
 
 	for _, d := range data {
 		// when
-		actual := hasher.Sha256.GenerateHash(d.first.index, d.first.prevHash, d.first.timestamp, d.first.data)
-		challange := hasher.Sha256.GenerateHash(d.challenge.index, d.challenge.prevHash, d.challenge.timestamp, d.challenge.data)
+		actual := hasher.Sha256.GenerateHash(d.a.index, d.a.nonce, d.a.prevHash, d.a.timestamp, d.a.data)
+		challange := hasher.Sha256.GenerateHash(d.b.index, d.b.nonce, d.b.prevHash, d.b.timestamp, d.b.data)
 
 		// then
 		assert.NotEqual(t, "", actual)

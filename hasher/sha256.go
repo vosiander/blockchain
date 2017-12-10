@@ -16,12 +16,13 @@ var (
 type hasher struct {
 }
 
-func (ha hasher) GenerateHash(index int64, prevHash string, t time.Time, data []byte) string {
+func (ha hasher) GenerateHash(index int64, nonce int64, prevHash string, timestamp time.Time, data []byte) string {
 	b := bytes.Join(
 		[][]byte{
 			conversion.IntToHex(index),
+			conversion.IntToHex(nonce),
 			[]byte(prevHash),
-			conversion.IntToHex(t.Unix()),
+			conversion.IntToHex(timestamp.Unix()),
 		},
 		data,
 	)
