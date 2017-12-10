@@ -16,7 +16,7 @@ var (
 )
 
 func TestAll(t *testing.T) {
-	ch = NewBlockchain(Sha256, Hashcash, blockData["genesis"])
+	ch = NewBlockchain(Sha256, Hashcash, blockData["genesis"], genesisTimestamp)
 	ch.Mine(blockData["second"])
 	ch.Mine(blockData["third"])
 

@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"time"
+
 	"github.com/siklol/blockchain/hasher"
 	"github.com/siklol/blockchain/proofofwork"
 )
@@ -21,7 +23,7 @@ type Blockchain struct {
 	pow ProofOfWorkType
 }
 
-func NewBlockchain(ht HashType, pow ProofOfWorkType, genesisMsg []byte) *Blockchain {
+func NewBlockchain(ht HashType, pow ProofOfWorkType, genesisMsg []byte, genesisTimestamp time.Time) *Blockchain {
 	var hashingAlgo Hasher
 	switch ht {
 	case Sha256:
@@ -39,7 +41,7 @@ func NewBlockchain(ht HashType, pow ProofOfWorkType, genesisMsg []byte) *Blockch
 	}
 
 	blocks := make(map[string]*Block)
-	b := GenesisBlock(hashingAlgo, powAlgo, genesisMsg)
+	b := GenesisBlock(hashingAlgo, powAlgo, genesisMsg, genesisTimestamp)
 
 	blocks[b.Hash] = b
 

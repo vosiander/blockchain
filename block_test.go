@@ -10,7 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var proofOfWorkForTest = proofofwork.HashCash
+var (
+	proofOfWorkForTest = proofofwork.HashCash
+	genesisTimestamp   = time.Date(2017, 12, 10, 12, 0, 0, 0, time.UTC)
+)
 
 func init() {
 	proofOfWorkForTest.Difficulty = 16 // use a simple difficulty for fast test results
@@ -21,7 +24,7 @@ func TestSuccessfulGenesisBlock(t *testing.T) {
 	data := []byte("genesis block!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data)
+	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data, genesisTimestamp)
 
 	// then
 	assert.NotEmpty(t, g)
@@ -35,7 +38,7 @@ func TestSuccessfulMineBlock(t *testing.T) {
 	secondBlockData := []byte("blockchain rocks!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data)
+	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data, genesisTimestamp)
 	c, err := Mine(g, secondBlockData)
 
 	// then
@@ -59,7 +62,7 @@ func TestInvalidHash(t *testing.T) {
 	secondBlockData := []byte("blockchain rocks!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data)
+	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data, genesisTimestamp)
 	g.Timestamp = g.Timestamp.Add(-1 * 20 * time.Hour)
 	_, err := Mine(g, secondBlockData)
 
@@ -74,9 +77,21 @@ func TestProofOfWork(t *testing.T) {
 	secondBlockData := []byte("blockchain rocks!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data)
+	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data, genesisTimestamp)
 	c, _ := Mine(g, secondBlockData)
 
 	// then
 	assert.True(t, c.VerifyProofOfWork(c.Nonce))
+}
+
+func TestIdenticalGenesisBlocks(t *testing.T) {
+	// given
+	data := []byte("genesis block!")
+
+	// when
+	firstG := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data, genesisTimestamp)
+	secondG := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data, genesisTimestamp)
+
+	// then
+	assert.Equal(t, firstG.Hash, secondG.Hash)
 }

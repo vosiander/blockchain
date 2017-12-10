@@ -32,9 +32,7 @@ type ProofOfWork interface {
 	Verify(data []byte, nonce int64, t time.Time, salt string) bool
 }
 
-func GenesisBlock(h Hasher, p ProofOfWork, data []byte) *Block {
-	t := time.Now()
-
+func GenesisBlock(h Hasher, p ProofOfWork, data []byte, t time.Time) *Block {
 	nonce := p.Proof(data, t, Salt)
 
 	return &Block{
