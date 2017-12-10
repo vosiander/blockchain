@@ -70,6 +70,10 @@ func (c *Blockchain) Mine(d []byte) error {
 }
 
 func (c *Blockchain) PreviousBlock(b *Block) *Block {
+	if b == nil {
+		return nil
+	}
+
 	prev, ok := c.blocks[b.PrevHash]
 
 	if !ok {
@@ -77,4 +81,21 @@ func (c *Blockchain) PreviousBlock(b *Block) *Block {
 	}
 
 	return prev
+}
+func (c *Blockchain) Blocks() []*Block {
+	blocks := []*Block{}
+
+	tip := c.Tip()
+	for {
+		prevBlock := c.PreviousBlock(tip)
+
+		if tip == nil {
+			break
+		}
+
+		blocks = append(blocks, tip)
+		tip = prevBlock
+	}
+
+	return blocks
 }
