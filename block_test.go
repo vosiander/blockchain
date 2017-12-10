@@ -10,12 +10,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var proofOfWorkForTest = proofofwork.HashCash
+
+func init() {
+	proofOfWorkForTest.Difficulty = 16 // use a simple difficulty for fast test results
+}
+
 func TestSuccessfulGenesisBlock(t *testing.T) {
 	// given
 	data := []byte("genesis block!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, proofofwork.HashCash, data)
+	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data)
 
 	// then
 	assert.NotEmpty(t, g)
@@ -29,7 +35,7 @@ func TestSuccessfulMineBlock(t *testing.T) {
 	secondBlockData := []byte("blockchain rocks!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, proofofwork.HashCash, data)
+	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data)
 	c, err := Mine(g, secondBlockData)
 
 	// then
@@ -53,7 +59,7 @@ func TestInvalidHash(t *testing.T) {
 	secondBlockData := []byte("blockchain rocks!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, proofofwork.HashCash, data)
+	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data)
 	g.Timestamp = g.Timestamp.Add(-1 * 20 * time.Hour)
 	_, err := Mine(g, secondBlockData)
 
@@ -68,7 +74,7 @@ func TestProofOfWork(t *testing.T) {
 	secondBlockData := []byte("blockchain rocks!")
 
 	// when
-	g := GenesisBlock(hasher.Sha256, proofofwork.HashCash, data)
+	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data)
 	c, _ := Mine(g, secondBlockData)
 
 	// then
