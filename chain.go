@@ -8,19 +8,17 @@ import (
 )
 
 type HashType string
-
-const Sha256 HashType = "sha256"
-
 type ProofOfWorkType string
 
+const Sha256 HashType = "sha256"
 const Hashcash = "hashcash"
 
 type Blockchain struct {
 	blocks      map[string]*Block
+	indexToHash map[int64]string
 	tip         *Block
-	hashingAlgo HashType
-
-	pow ProofOfWorkType
+	hasher      Hasher
+	proof       ProofOfWork
 }
 
 func NewBlockchain(ht HashType, pow ProofOfWorkType, genesisMsg []byte, genesisTimestamp time.Time) *Blockchain {
@@ -42,14 +40,17 @@ func NewBlockchain(ht HashType, pow ProofOfWorkType, genesisMsg []byte, genesisT
 
 	blocks := make(map[string]*Block)
 	b := GenesisBlock(hashingAlgo, powAlgo, genesisMsg, genesisTimestamp)
+	indexMap := make(map[int64]string)
 
 	blocks[b.Hash] = b
+	indexMap[0] = b.Hash
 
 	return &Blockchain{
 		blocks:      blocks,
 		tip:         b,
-		hashingAlgo: ht,
-		pow:         pow,
+		indexToHash: indexMap,
+		hasher:      hashingAlgo,
+		proof:       powAlgo,
 	}
 }
 
@@ -58,7 +59,7 @@ func (c *Blockchain) Tip() *Block {
 }
 
 func (c *Blockchain) Mine(d []byte) error {
-	newTip, err := Mine(c.tip, d)
+	newTip, err := Mine(c.tip, d, c.hasher, c.proof)
 
 	if err != nil {
 		return err
@@ -66,6 +67,7 @@ func (c *Blockchain) Mine(d []byte) error {
 
 	c.tip = newTip
 	c.blocks[newTip.Hash] = newTip
+	c.indexToHash[newTip.Index] = newTip.Hash
 	return nil
 }
 
@@ -98,4 +100,35 @@ func (c *Blockchain) Blocks() []*Block {
 	}
 
 	return blocks
+}
+func (c *Blockchain) Genesis() *Block {
+	return c.blocks[c.indexToHash[0]]
+}
+func (c *Blockchain) Exists(block *Block) bool {
+	_, ok := c.blocks[block.Hash]
+
+	return ok
+}
+func (c *Blockchain) BlockAtIndex(i int64) *Block {
+	hash, ok := c.indexToHash[i]
+
+	if ok {
+		return c.blocks[hash]
+	}
+
+	return nil
+}
+func (c *Blockchain) Append(block *Block) error {
+	if !block.Verify(c.hasher, c.proof) {
+		return ErrInvalidBlock
+	}
+
+	if c.tip.Hash != block.PrevHash {
+		return ErrMissingPreviousBlock
+	}
+
+	c.tip = block
+	c.blocks[block.Hash] = block
+	c.indexToHash[block.Index] = block.Hash
+	return nil
 }

@@ -15,12 +15,15 @@ func main() {
 	// router
 	router := gin.Default()
 
-	pool := network.NewPool()
-
 	// we assume that the genesis block is created equally on all our handlers. Else we would have different blockchains
 	genesisMsg := []byte("")
 	genesisTimestamp := time.Date(1985, 2, 20, 4, 59, 0, 0, time.UTC)
 	chain := blockchain.NewBlockchain(blockchain.Sha256, blockchain.Hashcash, genesisMsg, genesisTimestamp)
+
+	// networking
+	pool := network.NewPool()
+	cn := network.NewChainNetwork(chain, pool.NotificationChannel)
+	go cn.Listen()
 
 	// handlers
 	handler.NewDefaultHandler().Register(router)

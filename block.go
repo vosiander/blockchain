@@ -9,12 +9,12 @@ const GenesisBlockIndex = 0
 const Salt = "64kjwsfhgm2w46ktwe6tulkdgfa345werzh1q435jhwrtzk5e37lk" // FIXME
 
 var (
-	ErrInvalidBlockHash = errors.New("invalid block hash")
+	ErrInvalidBlockHash     = errors.New("invalid block hash")
+	ErrInvalidBlock         = errors.New("invalid block")
+	ErrMissingPreviousBlock = errors.New("missing previous block")
 )
 
 type Block struct {
-	hasher    Hasher
-	proof     ProofOfWork
 	Index     int64     `json:"index"`
 	Hash      string    `json:"hash"`
 	PrevHash  string    `json:"prev_hash"`
@@ -36,8 +36,6 @@ func GenesisBlock(h Hasher, p ProofOfWork, data []byte, t time.Time) *Block {
 	nonce := p.Proof(data, t, Salt)
 
 	return &Block{
-		hasher:    h,
-		proof:     p,
 		Index:     GenesisBlockIndex,
 		Nonce:     nonce,
 		Hash:      h.GenerateHash(GenesisBlockIndex, nonce, "", t, data),
@@ -51,22 +49,20 @@ func (b *Block) IsGenesisBlock() bool {
 	return b.Index == GenesisBlockIndex && b.PrevHash == ""
 }
 
-func Mine(tip *Block, data []byte) (*Block, error) {
+func Mine(tip *Block, data []byte, hasher Hasher, proof ProofOfWork) (*Block, error) {
 	index := tip.Index + 1
 	t := time.Now()
 
-	if !tip.IsValidHash(tip.Hash) {
+	if !tip.IsValidHash(hasher, tip.Hash) {
 		return nil, ErrInvalidBlockHash
 	}
 
-	nonce := tip.proof.Proof(data, t, Salt)
+	nonce := proof.Proof(data, t, Salt)
 
 	b := &Block{
-		hasher:    tip.hasher,
-		proof:     tip.proof,
 		Index:     index,
 		Nonce:     nonce,
-		Hash:      tip.hasher.GenerateHash(index, nonce, tip.Hash, t, data),
+		Hash:      hasher.GenerateHash(index, nonce, tip.Hash, t, data),
 		PrevHash:  tip.Hash,
 		Timestamp: t,
 		Data:      data,
@@ -75,11 +71,15 @@ func Mine(tip *Block, data []byte) (*Block, error) {
 	return b, nil
 }
 
-func (b *Block) IsValidHash(hash string) bool {
-	challenge := b.hasher.GenerateHash(b.Index, b.Nonce, b.PrevHash, b.Timestamp, b.Data)
+func (b *Block) IsValidHash(hasher Hasher, hash string) bool {
+	challenge := hasher.GenerateHash(b.Index, b.Nonce, b.PrevHash, b.Timestamp, b.Data)
 	return hash == challenge
 }
 
-func (b *Block) VerifyProofOfWork(nonce int64) bool {
-	return b.proof.Verify(b.Data, nonce, b.Timestamp, Salt)
+func (b *Block) VerifyProofOfWork(proof ProofOfWork, nonce int64) bool {
+	return proof.Verify(b.Data, nonce, b.Timestamp, Salt)
+}
+
+func (b *Block) Verify(hasher Hasher, proof ProofOfWork) bool {
+	return b.VerifyProofOfWork(proof, b.Nonce) && b.IsValidHash(hasher, b.Hash)
 }

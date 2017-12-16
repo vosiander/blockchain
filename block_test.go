@@ -39,7 +39,7 @@ func TestSuccessfulMineBlock(t *testing.T) {
 
 	// when
 	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data, genesisTimestamp)
-	c, err := Mine(g, secondBlockData)
+	c, err := Mine(g, secondBlockData, hasher.Sha256, proofofwork.HashCash)
 
 	// then
 	assert.NoError(t, err)
@@ -64,7 +64,7 @@ func TestInvalidHash(t *testing.T) {
 	// when
 	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data, genesisTimestamp)
 	g.Timestamp = g.Timestamp.Add(-1 * 20 * time.Hour)
-	_, err := Mine(g, secondBlockData)
+	_, err := Mine(g, secondBlockData, hasher.Sha256, proofofwork.HashCash)
 
 	// then
 	assert.Error(t, err)
@@ -78,10 +78,10 @@ func TestProofOfWork(t *testing.T) {
 
 	// when
 	g := GenesisBlock(hasher.Sha256, proofOfWorkForTest, data, genesisTimestamp)
-	c, _ := Mine(g, secondBlockData)
+	c, _ := Mine(g, secondBlockData, hasher.Sha256, proofofwork.HashCash)
 
 	// then
-	assert.True(t, c.VerifyProofOfWork(c.Nonce))
+	assert.True(t, c.VerifyProofOfWork(proofofwork.HashCash, c.Nonce))
 }
 
 func TestIdenticalGenesisBlocks(t *testing.T) {

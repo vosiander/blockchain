@@ -1,13 +1,15 @@
 package network
 
 type Pool struct {
-	Peers   []*Peer `json:"peers"`
-	peerMap map[string]bool
+	Peers               []*Peer `json:"peers"`
+	peerMap             map[string]bool
+	NotificationChannel chan *Peer
 }
 
 func NewPool() *Pool {
 	return &Pool{
-		peerMap: make(map[string]bool),
+		peerMap:             make(map[string]bool),
+		NotificationChannel: make(chan *Peer, 1024),
 	}
 }
 
@@ -21,6 +23,8 @@ func (p *Pool) AddPeer(pe *Peer) {
 
 	p.Peers = append(p.Peers, pe)
 	p.peerMap[ipPort] = true
+
+	p.NotificationChannel <- pe
 }
 
 func (pool *Pool) GetPeers() []*Peer {
