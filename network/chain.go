@@ -4,32 +4,50 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/siklol/blockchain"
 )
 
-// This could also be done via kafka or some other messaging infrastructure
 type ChainNetwork struct {
 	c                *blockchain.Blockchain
 	peerNotification <-chan *Peer
 	mu               *sync.Mutex
+	ticker           *time.Ticker
+	peers            []*Peer
 }
 
 func NewChainNetwork(c *blockchain.Blockchain, cc <-chan *Peer) *ChainNetwork {
-	return &ChainNetwork{
+	cn := &ChainNetwork{
+		ticker:           time.NewTicker(time.Second * 30),
 		c:                c,
 		peerNotification: cc,
 		mu:               &sync.Mutex{},
 	}
+
+	go func() {
+		for t := range cn.ticker.C {
+			fmt.Println("timed synchronization at", t)
+
+			for _, p := range cn.peers {
+				log.Printf("Sync peer %s:%s\n", p.IP, p.Port)
+				cn.synchronizePeer(p)
+			}
+		}
+	}()
+
+	return cn
 }
 
 func (cn *ChainNetwork) Listen() {
 	for p := range cn.peerNotification {
 		log.Printf("New peer received %s:%s\n", p.IP, p.Port)
-
-		// TODO add all peers from peer
-		cn.synchronizePeer(p)
+		cn.AddPeer(p)
 	}
+}
+
+func (cn *ChainNetwork) AddPeer(p *Peer) {
+	cn.peers = append(cn.peers, p)
 }
 
 func (cn *ChainNetwork) synchronizePeer(p *Peer) {
@@ -73,9 +91,8 @@ func (cn *ChainNetwork) synchronizePeer(p *Peer) {
 
 	// TODO download all blocks which are not currently in the chain
 	currentTip := cn.c.Tip()
-	index := currentTip.Index
+	index := currentTip.Index // TODO fix index
 	for true {
-		index++
 
 		b, err := BlockAtIndex(p, index)
 		if err != nil {
@@ -83,6 +100,7 @@ func (cn *ChainNetwork) synchronizePeer(p *Peer) {
 			return
 		}
 
+		index++
 		currentTip = b
 
 		if b == nil {
