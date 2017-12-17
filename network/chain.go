@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"net"
+
 	"github.com/siklol/blockchain"
 )
 
@@ -89,10 +91,9 @@ func (cn *ChainNetwork) synchronizePeer(p *Peer) {
 		return
 	}
 
-	// TODO download all blocks which are not currently in the chain
-	currentTip := cn.c.Tip()
-	index := currentTip.Index // TODO fix index
+	index := cn.c.Tip().Index
 	for true {
+		index++
 
 		b, err := BlockAtIndex(p, index)
 		if err != nil {
@@ -100,9 +101,9 @@ func (cn *ChainNetwork) synchronizePeer(p *Peer) {
 			return
 		}
 
-		index++
-		currentTip = b
+		// TODO if the other chain has longer chains, use their chain
 
+		currentTip := b
 		if b == nil {
 			log.Println(fmt.Sprintf("no block at index %d : ", index) + err.Error())
 			return
@@ -115,7 +116,17 @@ func (cn *ChainNetwork) synchronizePeer(p *Peer) {
 
 		if currentTip.Hash == tip.Hash {
 			log.Println("finished synchronization. tip equals latest block from peer")
-			return
+			break
 		}
+	}
+
+	// TODO announce peer
+	err = AddPeer(p, &Peer{
+		IP:   net.ParseIP("192.168.178.20"), // FIXME change to dynamic ip
+		Port: "8080",
+	})
+	if err != nil {
+		log.Println("error pushing host peer ip to node: " + err.Error())
+		return
 	}
 }

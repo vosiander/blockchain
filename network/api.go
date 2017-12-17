@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"bytes"
+
 	"github.com/siklol/blockchain"
 )
 
@@ -59,19 +61,38 @@ func BlockAtIndex(p *Peer, i int64) (*blockchain.Block, error) {
 	return block(rsp)
 }
 
+func AddPeer(h *Peer, newPeer *Peer) error {
+	jsonD, _ := json.Marshal(newPeer)
+	_, err := post(h, "/peers", jsonD)
+
+	return err
+}
+
 func block(rsp []byte) (*blockchain.Block, error) {
 	var block *blockchain.Block
 	if err := json.Unmarshal(rsp, &block); err != nil {
 		return nil, err
 	}
 
-	// FIXME this is hardcoded. Change this
-
 	return block, nil
 }
 
 func get(p *Peer, url string) ([]byte, error) {
 	response, err := http.Get(fmt.Sprintf("http://%s:%s"+url, p.IP, p.Port)) // TODO https?
+	if err != nil {
+		return []byte(""), err
+	}
+
+	rsp, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return []byte(""), err
+	}
+
+	return rsp, nil
+}
+
+func post(p *Peer, url string, jsonStr []byte) ([]byte, error) {
+	response, err := http.Post(fmt.Sprintf("http://%s:%s"+url, p.IP, p.Port), "application/json", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		return []byte(""), err
 	}
