@@ -1,7 +1,10 @@
 package blockchain
 
 import (
+	"log"
 	"time"
+
+	"sync"
 
 	"github.com/siklol/blockchain/hasher"
 	"github.com/siklol/blockchain/proofofwork"
@@ -19,6 +22,7 @@ type Blockchain struct {
 	tip         *Block
 	hasher      Hasher
 	proof       ProofOfWork
+	mu          *sync.Mutex
 }
 
 func NewBlockchain(ht HashType, pow ProofOfWorkType, genesisMsg []byte, genesisTimestamp time.Time) *Blockchain {
@@ -51,6 +55,7 @@ func NewBlockchain(ht HashType, pow ProofOfWorkType, genesisMsg []byte, genesisT
 		indexToHash: indexMap,
 		hasher:      hashingAlgo,
 		proof:       powAlgo,
+		mu:          &sync.Mutex{},
 	}
 }
 
@@ -59,6 +64,9 @@ func (c *Blockchain) Tip() *Block {
 }
 
 func (c *Blockchain) Mine(d []byte) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	newTip, err := Mine(c.tip, d, c.hasher, c.proof)
 
 	if err != nil {
@@ -118,7 +126,11 @@ func (c *Blockchain) BlockAtIndex(i int64) *Block {
 
 	return nil
 }
+
 func (c *Blockchain) Append(block *Block) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if !block.Verify(c.hasher, c.proof) {
 		return ErrInvalidBlock
 	}
@@ -130,5 +142,54 @@ func (c *Blockchain) Append(block *Block) error {
 	c.tip = block
 	c.blocks[block.Hash] = block
 	c.indexToHash[block.Index] = block.Hash
+	return nil
+}
+
+func (c *Blockchain) DestroyBlocksFromIndex(index int64) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if index == 0 {
+		return ErrCannotDestroyGenesisBlock
+	}
+
+	_, ok := c.indexToHash[index]
+	if !ok {
+		return ErrInvalidDestroyBlock
+	}
+
+	newTipHash := c.blocks[c.indexToHash[index]].PrevHash
+	c.tip = c.blocks[newTipHash]
+
+	for true {
+		hash, ok := c.indexToHash[index]
+		if !ok {
+			break
+		}
+
+		delete(c.blocks, hash)
+		delete(c.indexToHash, index)
+
+		index++
+	}
+
+	return nil
+}
+
+func (c *Blockchain) ReplaceChainFromIndex(index int64, blocks []*Block) error {
+
+	if index <= c.tip.Index {
+		if err := c.DestroyBlocksFromIndex(index); err != nil {
+			return err
+		}
+	}
+
+	for _, b := range blocks {
+		if err := c.Append(b); err != nil {
+			log.Println("Could not append block to current blockchain. error: " + err.Error())
+			return nil
+		}
+	}
+
 	return nil
 }

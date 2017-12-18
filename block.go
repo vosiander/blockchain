@@ -9,9 +9,11 @@ const GenesisBlockIndex = 0
 const Salt = "64kjwsfhgm2w46ktwe6tulkdgfa345werzh1q435jhwrtzk5e37lk" // FIXME
 
 var (
-	ErrInvalidBlockHash     = errors.New("invalid block hash")
-	ErrInvalidBlock         = errors.New("invalid block")
-	ErrMissingPreviousBlock = errors.New("missing previous block")
+	ErrInvalidBlockHash          = errors.New("invalid block hash")
+	ErrInvalidBlock              = errors.New("invalid block")
+	ErrMissingPreviousBlock      = errors.New("missing previous block")
+	ErrCannotDestroyGenesisBlock = errors.New("destroying from genesis block is forbidden")
+	ErrInvalidDestroyBlock       = errors.New("cannot destroy block at index")
 )
 
 type Block struct {

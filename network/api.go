@@ -6,30 +6,26 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"bytes"
+
 	"github.com/siklol/blockchain"
 )
 
-func Version(p *Peer) (int, error) {
+func Version(p *Peer) (string, error) {
 	v := struct {
-		Version json.Number `json:"version"`
+		Version string `json:"version"`
 	}{}
 
 	rsp, err := get(p, "/version")
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	if err := json.Unmarshal(rsp, &v); err != nil {
-		return 0, err
+		return "", err
 	}
 
-	i, err := v.Version.Int64()
-
-	if err != nil {
-		return 0, err
-	}
-
-	return int(i), nil
+	return v.Version, nil
 }
 
 func GenesisBlock(p *Peer) (*blockchain.Block, error) {
@@ -59,19 +55,38 @@ func BlockAtIndex(p *Peer, i int64) (*blockchain.Block, error) {
 	return block(rsp)
 }
 
+func AddPeer(h *Peer, newPeer *Peer) error {
+	jsonD, _ := json.Marshal(newPeer)
+	_, err := post(h, "/peers", jsonD)
+
+	return err
+}
+
 func block(rsp []byte) (*blockchain.Block, error) {
 	var block *blockchain.Block
 	if err := json.Unmarshal(rsp, &block); err != nil {
 		return nil, err
 	}
 
-	// FIXME this is hardcoded. Change this
-
 	return block, nil
 }
 
 func get(p *Peer, url string) ([]byte, error) {
 	response, err := http.Get(fmt.Sprintf("http://%s:%s"+url, p.IP, p.Port)) // TODO https?
+	if err != nil {
+		return []byte(""), err
+	}
+
+	rsp, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return []byte(""), err
+	}
+
+	return rsp, nil
+}
+
+func post(p *Peer, url string, jsonStr []byte) ([]byte, error) {
+	response, err := http.Post(fmt.Sprintf("http://%s:%s"+url, p.IP, p.Port), "application/json", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		return []byte(""), err
 	}
