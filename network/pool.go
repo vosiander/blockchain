@@ -1,15 +1,22 @@
 package network
 
+import "net"
+
 type Pool struct {
 	Peers               []*Peer `json:"peers"`
 	peerMap             map[string]bool
 	NotificationChannel chan *Peer
+
+	advertisedHost string
+	port           string
 }
 
-func NewPool() *Pool {
+func NewPool(advertisedHost, port string) *Pool {
 	return &Pool{
 		peerMap:             make(map[string]bool),
 		NotificationChannel: make(chan *Peer, 1024),
+		advertisedHost:      advertisedHost,
+		port:                port,
 	}
 }
 
@@ -29,4 +36,11 @@ func (p *Pool) AddPeer(pe *Peer) {
 
 func (pool *Pool) GetPeers() []*Peer {
 	return pool.Peers
+}
+
+func (pool *Pool) GetHost() *Peer {
+	return &Peer{
+		IP:   net.ParseIP(pool.advertisedHost),
+		Port: pool.port,
+	}
 }

@@ -177,9 +177,9 @@ func (c *Blockchain) DestroyBlocksFromIndex(index int64) error {
 }
 
 func (c *Blockchain) ReplaceChainFromIndex(index int64, blocks []*Block) error {
-
 	if index <= c.tip.Index {
-		if err := c.DestroyBlocksFromIndex(index); err != nil {
+		err := c.DestroyBlocksFromIndex(index)
+		if err != nil {
 			return err
 		}
 	}

@@ -5,6 +5,8 @@ import (
 
 	"time"
 
+	"os"
+
 	"github.com/gin-gonic/gin"
 	"github.com/siklol/blockchain"
 	"github.com/siklol/blockchain/handler"
@@ -12,6 +14,16 @@ import (
 )
 
 func main() {
+	advertisedHost := os.Getenv("ADVERTISED_HOST")
+	if advertisedHost == "" {
+		advertisedHost = "127.0.0.1"
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	// router
 	router := gin.Default()
 
@@ -21,8 +33,8 @@ func main() {
 	chain := blockchain.NewBlockchain(blockchain.Sha256, blockchain.Hashcash, genesisMsg, genesisTimestamp)
 
 	// networking
-	pool := network.NewPool()
-	cn := network.NewChainNetwork(chain, pool.NotificationChannel)
+	pool := network.NewPool(advertisedHost, port)
+	cn := network.NewChainNetwork(chain, pool)
 	go cn.Listen()
 
 	// handlers
