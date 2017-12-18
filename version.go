@@ -7,7 +7,7 @@ import (
 	"github.com/blang/semver"
 )
 
-const BlockchainVersion = "0.2.0" // TODO autogenerate
+const BlockchainVersion = "0.2.1" // TODO autogenerate
 
 func Version() semver.Version {
 	v, _ := semver.Make(BlockchainVersion)

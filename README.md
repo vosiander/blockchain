@@ -15,7 +15,19 @@ The blockchain can be created and maintained via the JSON-REST API by default ru
      "data": "And there is some more data here. A lot more data!"
     }' 
    
+## Networking
+
+There is basic p2p networking implemented. To make a node visible to another:
+    
+    curl -X POST http://localhost:8080/peers -H 'Content-Type: application/json' -d '{
+       "ip": "127.0.0.1",
+       "port": "9000"
+     }' 
+   
+where the ip and port is from the new peer, the current should discover
+
 ## Resources
+
 A list of online resources I found.
 
 - https://github.com/gin-gonic/gin/blob/master/README.md  Gin Router for the http part

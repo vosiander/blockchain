@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"errors"
+
 	"github.com/siklol/blockchain"
 )
 
@@ -74,52 +76,23 @@ func (cn *ChainNetwork) synchronizePeer(p *Peer) {
 		return
 	}
 
-	index := int64(0) // FIXME this is not efficient! Use merkel tree or something else. We need to find last common index
-	for true {
-		index++
-
-		b, err := BlockAtIndex(p, index)
-		if err != nil {
-			log.Println(fmt.Sprintf("error requesting block at index %d : ", index) + err.Error())
-			return
-		}
-
-		if cn.c.Exists(b) {
-			log.Println(fmt.Sprintf("skipping block %s at index %d", b.Hash, index))
-			continue
-		}
-
-		break
+	// FIXME this is not efficient! Use merkel tree or something else. We need to find last common index
+	firstBranchIndex, err := cn.findFirstBranchIndex(p)
+	if err != nil {
+		log.Println(fmt.Sprintf("error finding first branch firstBranchIndex %d : ", firstBranchIndex) + err.Error())
+		return
 	}
 
-	firstBranchIndex := index
-
-	var newChainPart []*blockchain.Block
-	for true {
-		b, err := BlockAtIndex(p, index)
-		if err != nil {
-			log.Println(fmt.Sprintf("error requesting block at index %d : ", index) + err.Error())
-			return
-		}
-
-		if b == nil {
-			log.Println(fmt.Sprintf("no block at index %d : ", index) + err.Error())
-			return
-		}
-
-		newChainPart = append(newChainPart, b)
-		index++
-
-		if b.Index == peerTip.Index {
-			break
-		}
+	newChainPart, err := cn.receiveChainFromIndex(p, firstBranchIndex, peerTip)
+	if err != nil {
+		log.Println(fmt.Sprintf("error receiving chain %d : ", firstBranchIndex) + err.Error())
+		return
 	}
 
 	if err := cn.c.ReplaceChainFromIndex(firstBranchIndex, newChainPart); err != nil {
 		log.Println("error replacing chain: " + err.Error())
 		return
 	}
-
 }
 
 func (cn *ChainNetwork) checkVersion(p *Peer) bool {
@@ -153,7 +126,55 @@ func (cn *ChainNetwork) hasCompatibleGenesisBlock(p *Peer) bool {
 }
 
 func (cn *ChainNetwork) broadcastPeer(p *Peer) {
+	// FIXME this is also not efficient. There should be an efficient way to create and distribute peers
 	if err := AddPeer(p, cn.pool.GetHost()); err != nil {
 		log.Println("error pushing host peer ip to node: " + err.Error())
 	}
+}
+
+func (cn *ChainNetwork) findFirstBranchIndex(p *Peer) (int64, error) {
+	index := int64(0)
+	for true {
+		index++
+
+		b, err := BlockAtIndex(p, index)
+		if err != nil {
+			log.Println(fmt.Sprintf("error requesting block at index %d : ", index) + err.Error())
+			return 0, err
+		}
+
+		if cn.c.Exists(b) {
+			log.Println(fmt.Sprintf("skipping block %s at index %d", b.Hash, index))
+			continue
+		}
+
+		break
+	}
+
+	return index, nil
+}
+
+func (cn *ChainNetwork) receiveChainFromIndex(p *Peer, index int64, peerTip *blockchain.Block) ([]*blockchain.Block, error) {
+	var newChainPart []*blockchain.Block
+	for true {
+		b, err := BlockAtIndex(p, index)
+		if err != nil {
+			log.Println(fmt.Sprintf("error requesting block at index %d : ", index) + err.Error())
+			return nil, err
+		}
+
+		if b == nil {
+			log.Println(fmt.Sprintf("no block at index %d : ", index))
+			return nil, errors.New("no block found at index")
+		}
+
+		newChainPart = append(newChainPart, b)
+		index++
+
+		if b.Index == peerTip.Index {
+			break
+		}
+	}
+
+	return newChainPart, nil
 }
