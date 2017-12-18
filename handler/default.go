@@ -1,6 +1,9 @@
 package handler
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/siklol/blockchain"
+)
 
 type defaultHandler struct {
 }
@@ -22,6 +25,6 @@ func (h *defaultHandler) GetDefault(c *gin.Context) {
 
 func (h *defaultHandler) GetVersion(c *gin.Context) {
 	c.JSON(200, gin.H{
-		"version": 1, // TODO do not hardcode this
+		"version": blockchain.Version().String(),
 	})
 }

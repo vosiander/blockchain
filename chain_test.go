@@ -12,6 +12,8 @@ var (
 		"genesis": []byte("genesis block!"),
 		"second":  []byte("This is the second block"),
 		"third":   []byte("And a third one"),
+		"fourth":  []byte("45jw5zrjksfghkmset76kw567kszrtfx"),
+		"fifth":   []byte("e6t87ul,ed566ki246kwrztmjsfdgkmeztul.,"),
 	}
 )
 
@@ -47,4 +49,20 @@ func VerifyChain(t *testing.T) {
 	// genesis -> nil
 	prevBlock = ch.PreviousBlock(prevBlock)
 	assert.Nil(t, prevBlock)
+}
+
+func TestDestroyBlock(t *testing.T) {
+	// given
+	ch = NewBlockchain(Sha256, Hashcash, blockData["genesis"], genesisTimestamp)
+	ch.Mine(blockData["second"])
+	ch.Mine(blockData["third"])
+	ch.Mine(blockData["fourth"])
+	ch.Mine(blockData["fifth"])
+
+	// when
+	ch.DestroyBlocksFromIndex(3)
+
+	// then
+	assert.Equal(t, ch.Tip().Index, int64(2))
+	assert.Equal(t, ch.Tip().Data, blockData["third"])
 }

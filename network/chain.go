@@ -3,10 +3,9 @@ package network
 import (
 	"fmt"
 	"log"
+	"net"
 	"sync"
 	"time"
-
-	"net"
 
 	"github.com/siklol/blockchain"
 )
@@ -33,6 +32,7 @@ func NewChainNetwork(c *blockchain.Blockchain, cc <-chan *Peer) *ChainNetwork {
 
 			for _, p := range cn.peers {
 				log.Printf("Sync peer %s:%s\n", p.IP, p.Port)
+				// TODO if peer is faulty, remove or deprecate it
 				cn.synchronizePeer(p)
 			}
 		}
@@ -56,43 +56,39 @@ func (cn *ChainNetwork) synchronizePeer(p *Peer) {
 	cn.mu.Lock()
 	defer cn.mu.Unlock()
 
-	v, err := Version(p)
-	if err != nil {
-		log.Println("error requesting version number: " + err.Error())
+	if !cn.checkVersion(p) {
 		return
 	}
 
-	log.Println(fmt.Sprintf("Version number from peer: %d", v))
-
-	genesisBlock, err := GenesisBlock(p)
-	if err != nil {
-		log.Println("error requesting genesis block: " + err.Error())
+	if !cn.hasCompatibleGenesisBlock(p) {
 		return
 	}
 
-	log.Println(fmt.Sprintf("Genesis block: %#v", genesisBlock))
+	cn.broadcastPeer(p)
 
-	if !cn.c.Exists(genesisBlock) {
-		log.Println(fmt.Sprintf("Genesis block is incompatible with block chain: %#v", genesisBlock))
-		return
-	}
-
-	tip, err := Tip(p)
+	peerTip, err := Tip(p)
 	if err != nil {
 		log.Println("error requesting tip block: " + err.Error())
 		return
 	}
 
-	log.Println(fmt.Sprintf("Tip block: %#v", tip))
+	log.Println(fmt.Sprintf("Tip block: %#v", peerTip))
 
-	if cn.c.Exists(tip) {
-		// TODO push own ip and port to node
+	if cn.c.Exists(peerTip) {
 		log.Println("peer tip exists in chain")
 		return
 	}
 
-	index := cn.c.Tip().Index
+	if cn.c.Tip().Index > peerTip.Index {
+		log.Println("peer tip is behind.")
+		// TODO push overwrite command?
+		return
+	}
+
+	index := int64(0) // FIXME this is not efficient! Use merkel tree or something else. We need to find last common index
 	for true {
+		log.Printf("old: index %d", index)
+
 		index++
 
 		b, err := BlockAtIndex(p, index)
@@ -101,32 +97,81 @@ func (cn *ChainNetwork) synchronizePeer(p *Peer) {
 			return
 		}
 
-		// TODO if the other chain has longer chains, use their chain
+		if cn.c.Exists(b) {
+			log.Println(fmt.Sprintf("skipping block %s at index %d", b.Hash, index))
+			continue
+		}
 
-		currentTip := b
+		break
+	}
+
+	firstBranchIndex := index
+
+	var newChainPart []*blockchain.Block
+	for true {
+		b, err := BlockAtIndex(p, index)
+		if err != nil {
+			log.Println(fmt.Sprintf("error requesting block at index %d : ", index) + err.Error())
+			return
+		}
+
 		if b == nil {
 			log.Println(fmt.Sprintf("no block at index %d : ", index) + err.Error())
 			return
 		}
 
-		if err := cn.c.Append(b); err != nil {
-			log.Println("Could not append block to current blockchain. error: " + err.Error())
-			return
-		}
+		newChainPart = append(newChainPart, b)
+		index++
 
-		if currentTip.Hash == tip.Hash {
-			log.Println("finished synchronization. tip equals latest block from peer")
+		if b.Index == peerTip.Index {
 			break
 		}
 	}
 
-	// TODO announce peer
-	err = AddPeer(p, &Peer{
-		IP:   net.ParseIP("192.168.178.20"), // FIXME change to dynamic ip
+	if err := cn.c.ReplaceChainFromIndex(firstBranchIndex, newChainPart); err != nil {
+		log.Println("error replacing chain: " + err.Error())
+		return
+	}
+
+}
+
+func (cn *ChainNetwork) checkVersion(p *Peer) bool {
+	v, err := Version(p)
+	if err != nil {
+		log.Println("error requesting version number: " + err.Error())
+		return false
+	}
+
+	if !blockchain.IsCompatibleWithCurrent(v) {
+		log.Println("incompatible versions " + v)
+		return false
+	}
+
+	return true
+}
+
+func (cn *ChainNetwork) hasCompatibleGenesisBlock(p *Peer) bool {
+	genesisBlock, err := GenesisBlock(p)
+	if err != nil {
+		log.Println("error requesting genesis block: " + err.Error())
+		return false
+	}
+
+	if !cn.c.Exists(genesisBlock) {
+		log.Println(fmt.Sprintf("Genesis block is incompatible with block chain: %#v", genesisBlock))
+		return false
+	}
+
+	return true
+}
+
+func (cn *ChainNetwork) broadcastPeer(p *Peer) {
+	err := AddPeer(p, &Peer{
+		IP:   net.ParseIP("127.0.0.1"), // FIXME change to dynamic ip
 		Port: "8080",
 	})
+
 	if err != nil {
 		log.Println("error pushing host peer ip to node: " + err.Error())
-		return
 	}
 }

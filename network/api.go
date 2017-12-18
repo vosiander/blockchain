@@ -11,27 +11,21 @@ import (
 	"github.com/siklol/blockchain"
 )
 
-func Version(p *Peer) (int, error) {
+func Version(p *Peer) (string, error) {
 	v := struct {
-		Version json.Number `json:"version"`
+		Version string `json:"version"`
 	}{}
 
 	rsp, err := get(p, "/version")
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	if err := json.Unmarshal(rsp, &v); err != nil {
-		return 0, err
+		return "", err
 	}
 
-	i, err := v.Version.Int64()
-
-	if err != nil {
-		return 0, err
-	}
-
-	return int(i), nil
+	return v.Version, nil
 }
 
 func GenesisBlock(p *Peer) (*blockchain.Block, error) {
